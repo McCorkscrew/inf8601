@@ -20,7 +20,48 @@ using namespace std;
 using namespace tbb;
 
 class DragonLimits {
+	piece_t* piece;
+public:
+	DragonLimits(piece_t *p);
+	void operator() (const blocked_range<uint64_t>& range) {
+		
+		xy_t *position = &piece->position;
+		xy_t *orientation = &piece->orientation;
+		xy_t *minimums = &piece->limits.minimums;
+		xy_t *maximums = &piece->limits.maximums;
+		for (uint64_t n = range.begin(); n <= range.end(); n++) {
+			position->x += orientation->x;
+			position->y += orientation->y;
+
+			if (((n & -n) << 1) & n)
+				rotate_left(orientation);
+			else
+				rotate_right(orientation);
+			if (minimums->x > position->x) minimums->x = position->x;
+			if (minimums->y > position->y) minimums->y = position->y;
+			if (maximums->x < position->x) maximums->x = position->x;
+			if (maximums->y < position->y) maximums->y = position->y;
+		}
+	}
+
+
+	DragonLimits(DragonLimits&s,tbb::split);
+	void join(DragonLimits& rhs) {piece_merge(piece, *rhs.piece);}
+
+	
+
 };
+
+DragonLimits::DragonLimits(piece_t *p){
+	piece = p;
+}
+
+DragonLimits::DragonLimits(DragonLimits&s,tbb::split){
+	piece = new piece_t;
+	piece_init(piece);
+}
+
+
 
 class DragonDraw {
 };
@@ -106,12 +147,16 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
  */
 int dragon_limits_tbb(limits_t *limits, uint64_t size, int nb_thread)
 {
-	TODO("dragon_limits_tbb");
-	DragonLimits lim;
-
+	//TODO("dragon_limits_tbb");
 
 	piece_t piece;
 	piece_init(&piece);
+	
+	DragonLimits lim(&piece);
+
+	parallel_reduce (blocked_range<uint64_t>(1, size), lim);
+
+
 	*limits = piece.limits;
 	return 0;
 }
