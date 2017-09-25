@@ -20,7 +20,7 @@ using namespace std;
 using namespace tbb;
 
 class DragonLimits {
-	piece_t* piece;
+	
 public:
 	DragonLimits(piece_t *p);
 	void operator() (const blocked_range<uint64_t>& range) {
@@ -29,7 +29,7 @@ public:
 		xy_t *orientation = &piece->orientation;
 		xy_t *minimums = &piece->limits.minimums;
 		xy_t *maximums = &piece->limits.maximums;
-		for (uint64_t n = range.begin(); n <= range.end(); n++) {
+		for (uint64_t n = range.begin() + 1; n <= range.end(); n++) {
 			position->x += orientation->x;
 			position->y += orientation->y;
 
@@ -45,10 +45,10 @@ public:
 	}
 
 
-	DragonLimits(DragonLimits&s,tbb::split);
-	void join(DragonLimits& rhs) {piece_merge(piece, *rhs.piece);}
+	DragonLimits(DragonLimits& s,tbb::split);
+	void join(DragonLimits& rhs) {piece_merge(piece, *rhs.piece); delete rhs.piece;}
 
-	
+	piece_t* piece;
 
 };
 
@@ -56,7 +56,7 @@ DragonLimits::DragonLimits(piece_t *p){
 	piece = p;
 }
 
-DragonLimits::DragonLimits(DragonLimits&s,tbb::split){
+DragonLimits::DragonLimits(DragonLimits& s,tbb::split){
 	piece = new piece_t;
 	piece_init(piece);
 }
@@ -154,7 +154,7 @@ int dragon_limits_tbb(limits_t *limits, uint64_t size, int nb_thread)
 	
 	DragonLimits lim(&piece);
 
-	parallel_reduce (blocked_range<uint64_t>(1, size), lim);
+	parallel_reduce (blocked_range<uint64_t>(0, size), lim);
 
 
 	*limits = piece.limits;
