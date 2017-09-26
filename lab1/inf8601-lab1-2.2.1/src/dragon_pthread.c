@@ -31,8 +31,17 @@ void printf_threadsafe(char *format, ...)
 void *dragon_draw_worker(void *data)
 {
 	/* 1. Initialiser la surface */
+	int area = data->dragon_width * data->dragon_height / data->nb_thread
+	init_canvas(data->id * area, (data->id + 1) * area, dragon, -1);
+	
 	/* 2. Dessiner le dragon */
+	unint64_t start = data->id * data->size / data->nb_thread;
+	unint64_t end = (data->id + 1) * data->size / data->nb_thread;
+	dragon_draw_raw(start, end, data->dragon, data->dragon_width, data->dragon_height, data->limits, data->id);
+
 	/* 3. Effectuer le rendu final */
+	scale_dragon(0, data->height, data->image, data->width, data->dragon, data->dragon_width, data->dragon_height, data->palette);
+	
 	return NULL;
 }
 
@@ -129,38 +138,19 @@ void *dragon_limit_worker(void *data)
  */
 int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 {
-	//TODO("dragon_limits_pthread");
+	TODO("dragon_limits_pthread");
 
 	int ret = 0;
-	//int i;
+	int i;
 	pthread_t *threads = NULL;
 	struct limit_data *thread_data = NULL;
 	piece_t master;
+
 	piece_init(&master);
 
 	/* 1. ALlouer de l'espace pour threads et threads_data. */
-	threads = (pthread_t*) malloc ( sizeof(pthread_t) * nb_thread );
-	thread_data = (struct limit_data*) malloc ( sizeof(struct limit_data) * nb_thread );
-
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
-	int thread_size = size / nb_thread;
-
-	for(int i = 0; i < nb_thread; i++)
-	{
-		thread_data[i].start = i * thread_size;
-		thread_data[i].end = (i+1) * thread_size - 1;
-		thread_data[i].piece = master;
-		pthread_create(&threads[i],NULL,dragon_limit_worker,&thread_data[i]);
-	}
-
 	/* 3. Attendre la fin du traitement. */
-	for(int i = 0; i < nb_thread; i++)
-	{	
-		pthread_join(threads[i],NULL);
-		piece_merge(&master, thread_data[i].piece);
-	}
-
-	goto done;
 
 done:
 	FREE(threads);
