@@ -32,6 +32,7 @@ void *dragon_draw_worker(void *data)
 {
 	struct draw_data *draw = (struct draw_data *) data;
 	/* 1. Initialiser la surface */
+<<<<<<< HEAD
 	int area = draw->dragon_width * draw->dragon_height / draw->nb_thread;
 	init_canvas(draw->id * area, (draw->id + 1) * area , draw->dragon, -1);
 	
@@ -153,20 +154,19 @@ void *dragon_limit_worker(void *data)
  */
 int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 {
-	//TODO("dragon_limits_pthread");
+	TODO("dragon_limits_pthread");
 
 	int ret = 0;
-	//int i;
+	int i;
 	pthread_t *threads = NULL;
 	struct limit_data *thread_data = NULL;
 	piece_t master;
+
 	piece_init(&master);
 
 	/* 1. ALlouer de l'espace pour threads et threads_data. */
-	threads = (pthread_t*) malloc ( sizeof(pthread_t) * nb_thread );
-	thread_data = (struct limit_data*) malloc ( sizeof(struct limit_data) * nb_thread );
-
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
+<<<<<<< HEAD
 	int thread_size = size / nb_thread;
 
 	for(int i = 0; i < nb_thread; i++)
@@ -177,14 +177,9 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 		pthread_create(&threads[i],NULL,dragon_limit_worker,&thread_data[i]);
 	}
 
+=======
+>>>>>>> 2a8e22b42e0727738c32066d84098a93e70784ab
 	/* 3. Attendre la fin du traitement. */
-	for(int i = 0; i < nb_thread; i++)
-	{	
-		pthread_join(threads[i],NULL);
-		piece_merge(&master, thread_data[i].piece);
-	}
-
-	goto done;
 
 done:
 	FREE(threads);
