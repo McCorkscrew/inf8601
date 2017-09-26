@@ -30,28 +30,38 @@ void printf_threadsafe(char *format, ...)
 
 void *dragon_draw_worker(void *data)
 {
+	struct draw_data *draw = (struct draw_data *) data;
 	/* 1. Initialiser la surface */
+	int area = draw->dragon_width * draw->dragon_height / draw->nb_thread;
+	init_canvas(draw->id * area, (draw->id + 1) * area , draw->dragon, -1);
+	
 	/* 2. Dessiner le dragon */
+	uint64_t start = draw->id * draw->size / draw->nb_thread;
+	uint64_t end = (draw->id + 1) * draw->size / draw->nb_thread ;
+	dragon_draw_raw(start, end, draw->dragon, draw->dragon_width, draw->dragon_height, draw->limits, draw->id);
+
 	/* 3. Effectuer le rendu final */
-	return NULL;
+	scale_dragon(0, draw->image_height, draw->image, draw->image_width, draw->image_height, draw->dragon, draw->dragon_width, draw->dragon_height, draw->palette);
+
+	
+	
+return NULL;
 }
 
 int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height, uint64_t size, int nb_thread)
 {
-	TODO("dragon_draw_pthread");
+	//TODO("dragon_draw_pthread");
 
 	pthread_t *threads = NULL;
 	pthread_barrier_t barrier;
 	limits_t lim;
 	struct draw_data info;
 	char *dragon = NULL;
-	int i;
 	int scale_x;
 	int scale_y;
 	struct draw_data *data = NULL;
 	struct palette *palette = NULL;
 	int ret = 0;
-	int r;
 
 	palette = init_palette(nb_thread);
 	if (palette == NULL)
@@ -99,7 +109,21 @@ int dragon_draw_pthread(char **canvas, struct rgb *image, int width, int height,
 
 	/* 2. Lancement du calcul parallèle principal avec draw_dragon_worker */
 
+
+	for(int i = 0; i < nb_thread; i++)
+	{
+		data[i] = info;
+		data[i].id = i;
+		pthread_create(&threads[i],NULL,dragon_draw_worker,&data[i]);
+	}
+	
+
 	/* 3. Attendre la fin du traitement */
+		for(int i = 0; i < nb_thread; i++)
+	{	
+		pthread_join(threads[i],NULL);
+	}
+	
 
 	/* 4. Destruction des variables (à compléter). */ 
 
@@ -148,7 +172,7 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	for(int i = 0; i < nb_thread; i++)
 	{
 		thread_data[i].start = i * thread_size;
-		thread_data[i].end = (i+1) * thread_size - 1;
+		thread_data[i].end = (i+1) * thread_size;
 		thread_data[i].piece = master;
 		pthread_create(&threads[i],NULL,dragon_limit_worker,&thread_data[i]);
 	}

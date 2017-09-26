@@ -15,6 +15,7 @@ extern "C" {
 #include "dragon_tbb.h"
 #include "tbb/tbb.h"
 #include "TidMap.h"
+#include "sys/types.h"
 
 using namespace std;
 using namespace tbb;
@@ -64,17 +65,43 @@ DragonLimits::DragonLimits(DragonLimits& s,tbb::split){
 
 
 class DragonDraw {
+public: 
+	struct draw_data *data;
+	DragonDraw(struct draw_data *d) {data = d;}
+	void operator()(const blocked_range<int>& range) const {
+		int id=-1;
+		int tmp =data->size / data->nb_thread;
+		for (int i = 0; i < data->nb_thread; i++)
+		{
+			if (range.begin() >= i * tmp && range.begin() < (i+1)*tmp)
+				id = i;
+		}
+		dragon_draw_raw(range.begin(), range.end(), data->dragon, data->dragon_width, data->dragon_height, data->limits, id);
+	}
+
 };
 
 class DragonRender {
+public:
+	struct draw_data *data;
+	DragonRender(struct draw_data *d) {data = d;}
+	void operator()(const blocked_range<int>& range) const {
+	    scale_dragon(range.begin(), range.end(), data->image, data->image_width, data->image_height, data->dragon, data->dragon_width, data->dragon_height, data->palette);
+	}
 };
 
 class DragonClear {
+public:
+	struct draw_data *data;
+	DragonClear(struct draw_data *d) : data(d) {}
+	void operator()(const blocked_range<int>& range) const {
+		init_canvas(range.begin(), range.end(), data->dragon, -1);
+	}
 };
 
 int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uint64_t size, int nb_thread)
 {
-	TODO("dragon_draw_tbb");
+	//TODO("dragon_draw_tbb");
 	struct draw_data data;
 	limits_t limits;
 	char *dragon = NULL;
@@ -126,18 +153,28 @@ int dragon_draw_tbb(char **canvas, struct rgb *image, int width, int height, uin
 	data.palette = palette;
 	data.tid = (int *) calloc(nb_thread, sizeof(int));
 
+
 	/* 2. Initialiser la surface : DragonClear */
+	DragonClear dClear(&data);
+
+	parallel_for(blocked_range<int>(0, dragon_surface), dClear);
 
 	/* 3. Dessiner le dragon : DragonDraw */
+	DragonDraw dDraw(&data);
+	parallel_for(blocked_range<int>(0, size), dDraw);
 
 	/* 4. Effectuer le rendu final */
+	
+	DragonRender dRender(&data);
+
+	parallel_for(blocked_range<int>(0, height), dRender);
 	
 	init.terminate();
 
 	free_palette(palette);
 	FREE(data.tid);
-	//*canvas = dragon;
-	*canvas = NULL;
+	*canvas = dragon;
+	//*canvas = NULL;
 	return 0;
 }
 
