@@ -26,23 +26,8 @@ public:
 	DragonLimits(piece_t *p);
 	void operator() (const blocked_range<uint64_t>& range) {
 		
-		xy_t *position = &piece->position;
-		xy_t *orientation = &piece->orientation;
-		xy_t *minimums = &piece->limits.minimums;
-		xy_t *maximums = &piece->limits.maximums;
-		for (uint64_t n = range.begin() + 1; n <= range.end(); n++) {
-			position->x += orientation->x;
-			position->y += orientation->y;
+		piece_limit(range.begin(),range.end(),piece);
 
-			if (((n & -n) << 1) & n)
-				rotate_left(orientation);
-			else
-				rotate_right(orientation);
-			if (minimums->x > position->x) minimums->x = position->x;
-			if (minimums->y > position->y) minimums->y = position->y;
-			if (maximums->x < position->x) maximums->x = position->x;
-			if (maximums->y < position->y) maximums->y = position->y;
-		}
 	}
 
 
