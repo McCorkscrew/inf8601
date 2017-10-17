@@ -61,6 +61,8 @@ public:
 			if (range.begin() >= i * tmp && range.begin() < (i+1)*tmp)
 				id = i;
 		}
+		//int tid = gettid();
+		//printf("~~tbb_Draw~~\nThread id : %d \nRange : %d ; %d (start;end)\n~~/tbb_Draw~~\n\n", tid, range.begin(), range.end());
 		dragon_draw_raw(range.begin(), range.end(), data->dragon, data->dragon_width, data->dragon_height, data->limits, id);
 	}
 

@@ -41,6 +41,8 @@ void *dragon_draw_worker(void *data)
 	pthread_barrier_wait(draw->barrier);
 	uint64_t start = draw->id * draw->size / draw->nb_thread;
 	uint64_t end = (draw->id + 1) * draw->size / draw->nb_thread ;
+
+	//printf_threadsafe("~~Pthread~~\nThread id : %d \nRange : %d ; %d (start;end)\n~~/Pthread~~\n\n", draw->id, start, end);
 	dragon_draw_raw(start, end, draw->dragon, draw->dragon_width, draw->dragon_height, draw->limits, draw->id);
 
 	/* 3. Effectuer le rendu final */
@@ -160,7 +162,6 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	//TODO("dragon_limits_pthread");
 
 	int ret = 0;
-	int i;
 	pthread_t *threads = NULL;
 	struct limit_data *thread_data = NULL;
 	piece_t master;
@@ -168,8 +169,12 @@ int dragon_limits_pthread(limits_t *limits, uint64_t size, int nb_thread)
 	piece_init(&master);
 
 	/* 1. ALlouer de l'espace pour threads et threads_data. */
-	threads = (pthread_t*) malloc ( sizeof(pthread_t) * nb_thread );
- 	thread_data = (struct limit_data*) malloc ( sizeof(struct limit_data) * nb_thread );
+	if ((threads = (pthread_t*) malloc ( sizeof(pthread_t) * nb_thread )) == NULL){
+		goto err;
+	}
+ 	if ((thread_data = (struct limit_data*) malloc ( sizeof(struct limit_data) * nb_thread )) == NULL){
+		goto err;
+	}
 	/* 2. Lancement du calcul en parallèle avec dragon_limit_worker. */
 
 	int thread_size = size / nb_thread;
