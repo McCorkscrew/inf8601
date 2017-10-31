@@ -17,10 +17,9 @@
 #define M_PI 3.14159265358979323846264338328
 #endif
 
-typedef struct sinoscope sinoscope_t;
+typedef struct sinoscope_adapte sinoscope_t_adapte;
 
-struct sinoscope {
-	unsigned char *buf;
+struct sinoscope_adapte {
 	int width;
 	int height;
 	int interval;
@@ -86,7 +85,34 @@ void value_color(struct rgb *color, float value, int interval, float interval_in
 	*color = c;
 }
 
-__kernel void sinoscope_kernel()
+__kernel void sinoscope_kernel(__global sinoscope_t_adapte *sino, __global unsigned char *output )
 {
 	// TODO
+
+    int x, y, index, taylor;
+    struct rgb c;
+    float val, px, py;
+    x = get_global_id(0);
+    y = get_global_id(1);
+
+            px = sino->dx * y - 2 * M_PI;
+            py = sino->dy * x - 2 * M_PI;
+            val = 0.0f;
+
+            for (taylor = 1; taylor <= sino->taylor; taylor += 2) {
+                val += sin(px * taylor * sino->phase1 + sino->time) / taylor + cos(py * taylor * sino->phase0) / taylor;
+            }
+
+            val = (atan(1.0 * val) - atan(-1.0 * val)) / (M_PI);
+            val = (val + 1) * 100;
+            value_color(&c, val, sino->interval, sino->interval_inv);
+            index = (y * 3) + (x * 3) * sino->width;
+
+	    #pragma OPENCL EXTENSION cl_khr_byte_addressable_store: enable
+            output[index + 0] = c.r;
+            output[index + 1] = c.g;
+            output[index + 2] = c.b;/*
+        }
+    }
+*/
 }

@@ -29,8 +29,24 @@ static cl_command_queue queue = NULL;
 static cl_context context = NULL;
 static cl_program prog = NULL;
 static cl_kernel kernel = NULL;
-
+static cl_mem kernelArg = NULL;
 static cl_mem output = NULL;
+
+typedef struct sinoscope_adapte sinoscope_t_adapte;
+
+struct sinoscope_adapte {
+	int width;
+	int height;
+	int interval;
+	int taylor;
+	float interval_inv;
+	float time;
+	float max;
+	float phase0;
+	float phase1;
+	float dx;
+	float dy;
+};
 
 int get_opencl_queue()
 {
@@ -135,6 +151,7 @@ int create_buffer(int width, int height)
      * TODO: initialiser la memoire requise avec clCreateBuffer()
      */
     cl_int ret = 0;
+    kernelArg = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(sinoscope_t_adapte), NULL, &ret);
     output = clCreateBuffer(context, CL_MEM_READ_WRITE, width*height, NULL, &ret);
     return ret;
 /*    goto error;
@@ -161,6 +178,7 @@ int opencl_init(int width, int height)
     /*
      * Initialisation du programme
      */
+
     prog = clCreateProgramWithSource(context, 1, (const char **) &code, &length, &err);
     ERR_THROW(CL_SUCCESS, err, "clCreateProgramWithSource failed");
     err = clBuildProgram(prog, 0, NULL, "-cl-fast-relaxed-math", NULL, NULL);
@@ -185,11 +203,16 @@ void opencl_shutdown()
     /*
      * TODO: liberer les ressources allouees
      */
+    clReleaseMemObject(kernelArg);
     clReleaseMemObject(output);
 }
 
 int sinoscope_image_opencl(sinoscope_t *ptr)
 {
+    cl_int ret = 0;
+    cl_int err;
+    cl_event ev;
+    size_t total_size[2] = {(size_t)ptr->width, (size_t)ptr->height};
     //TODO("sinoscope_image_opencl");
     /*
      * TODO: Executer le noyau avec la fonction run_kernel().
@@ -197,6 +220,7 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
      *       1. Passer les arguments au noyau avec clSetKernelArg(). Si des
      *          arguments sont passees par un tampon, copier les valeurs avec
      *          clEnqueueWriteBuffer() de maniere synchrone.
+
      *
      *       2. Appeller le noyau avec clEnqueueNDRangeKernel(). L'argument
      *          work_dim de clEnqueueNDRangeKernel() est un tableau size_t
@@ -209,10 +233,40 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
      *
      *       Utilisez ERR_THROW partout pour gerer systematiquement les exceptions
      */
-    clSetKernelArg(kernel, 0, sizeof(cl_mem), &output);
 
-    cl_int ret = 0;
-    cl_event ev;
+    sinoscope_t_adapte *ptr_new = new sinoscope_t_adapte;
+    ptr_new->width = ptr->width;
+    ptr_new->height = ptr->height;
+    ptr_new->interval = ptr->interval;
+    ptr_new->taylor = ptr->taylor;
+    ptr_new->interval_inv = ptr->interval_inv;
+    ptr_new->time = ptr->time;
+    ptr_new->max = ptr->max;
+    ptr_new->phase0 = ptr->phase0;
+    ptr_new->phase1 = ptr->phase1;
+    ptr_new->dx = ptr->dx;
+    ptr_new->dy = ptr->dy;
+
+    err = clEnqueueWriteBuffer(queue, kernelArg, CL_TRUE, 0, sizeof(sinoscope_t_adapte), ptr_new,0,NULL,&ev);
+    ERR_THROW(CL_SUCCESS, err, "clEnqueueWriteBuffer failed");
+
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &kernelArg);
+    ERR_THROW(CL_SUCCESS, err, "clSetKernelArg failed");
+
+    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
+    ERR_THROW(CL_SUCCESS, err, "clSetKernelArg failed");
+
+    err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, total_size, NULL,0, NULL,&ev);
+    ERR_THROW(CL_SUCCESS, err, "clEnqueueNDRangeKernel failed");
+    
+    err = clFinish(queue);
+    ERR_THROW(CL_SUCCESS, err, "clFinish failed");
+    
+    
+    err = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->height * ptr->width, ptr->buf, 0, NULL, &ev);
+    ERR_THROW(CL_SUCCESS, err, "clEnqueueReadBuffer failed");
+    
+    delete ptr_new;
 
     if (ptr == NULL)
         goto error;
