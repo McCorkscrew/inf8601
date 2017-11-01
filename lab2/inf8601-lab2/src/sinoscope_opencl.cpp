@@ -152,7 +152,7 @@ int create_buffer(int width, int height)
      */
     cl_int ret = 0;
     kernelArg = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(sinoscope_t_adapte), NULL, &ret);
-    output = clCreateBuffer(context, CL_MEM_READ_WRITE, width*height, NULL, &ret);
+    output = clCreateBuffer(context, CL_MEM_READ_WRITE, width*height*3, NULL, &ret);
     return ret;
 /*    goto error;
 done:
@@ -263,7 +263,7 @@ int sinoscope_image_opencl(sinoscope_t *ptr)
     ERR_THROW(CL_SUCCESS, err, "clFinish failed");
     
     
-    err = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->height * ptr->width, ptr->buf, 0, NULL, &ev);
+    err = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ptr->height * ptr->width*3, ptr->buf, 0, NULL, &ev);
     ERR_THROW(CL_SUCCESS, err, "clEnqueueReadBuffer failed");
     
     delete ptr_new;

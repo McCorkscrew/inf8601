@@ -28,13 +28,14 @@ int sinoscope_image_openmp(sinoscope_t *ptr)
     //#pragma omp parallel 
    // {
 
-    #pragma omp parallel for private(x,y,c,taylor,index,px,py) shared(sino) collapse(2)
-    for (x = 1; x < (sino.width -1); x++)
-    {
+
     //x = 1;
     //while(1) {
     	//y = 1;
        // while(1) {
+    #pragma omp parallel for private(x,y,c,taylor,index,px,py) shared(sino) collapse(2)
+    for (x = 1; x < (sino.width -1); x++)
+    {
 	for (y = 1; y < (sino.height - 1); y ++)
 	{	
 	    

@@ -92,9 +92,9 @@ __kernel void sinoscope_kernel(__global sinoscope_t_adapte *sino, __global unsig
     int x, y, index, taylor;
     struct rgb c;
     float val, px, py;
-    x = get_global_id(0);
-    y = get_global_id(1);
-
+    x = get_global_id(1);
+    y = get_global_id(0);
+        
             px = sino->dx * y - 2 * M_PI;
             py = sino->dy * x - 2 * M_PI;
             val = 0.0f;
@@ -107,7 +107,6 @@ __kernel void sinoscope_kernel(__global sinoscope_t_adapte *sino, __global unsig
             val = (val + 1) * 100;
             value_color(&c, val, sino->interval, sino->interval_inv);
             index = (y * 3) + (x * 3) * sino->width;
-
 	    #pragma OPENCL EXTENSION cl_khr_byte_addressable_store: enable
             output[index + 0] = c.r;
             output[index + 1] = c.g;
