@@ -33,7 +33,7 @@ int sinoscope_image_openmp(sinoscope_t *ptr)
     //while(1) {
     	//y = 1;
        // while(1) {
-    #pragma omp parallel for private(x,y,c,taylor,index,px,py) shared(sino) collapse(2)
+    #pragma omp parallel for private(x,y,c,taylor,index,px,py,val) shared(sino) schedule(dynamic) collapse(2)
     for (x = 1; x < (sino.width -1); x++)
     {
 	for (y = 1; y < (sino.height - 1); y ++)
@@ -52,6 +52,8 @@ int sinoscope_image_openmp(sinoscope_t *ptr)
             val = (val + 1) * 100;
             value_color(&c, val, sino.interval, sino.interval_inv);
             index = (y * 3) + (x * 3) * sino.width;
+
+
             sino.buf[index + 0] = c.r;
             sino.buf[index + 1] = c.g;
             sino.buf[index + 2] = c.b;
