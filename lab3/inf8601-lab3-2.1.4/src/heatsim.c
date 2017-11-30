@@ -257,8 +257,8 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 			MPI_Status *status = calloc(nbCom, sizeof(MPI_Status));
 
 
-			int nProcess = 1;
-			for (nProcess; nProcess < ctx->numprocs; nProcess++){
+			int nProcess;
+			for (nProcess = 1; nProcess < ctx->numprocs; nProcess++){
 			
 				int procsCord[DIM_2D];
 				MPI_Cart_coords(ctx->comm2d, nProcess, DIM_2D, procsCord);
@@ -331,7 +331,7 @@ void exchng2d(ctx_t *ctx) {
 	 * 4 echanges doivent etre effectues
 	 */
 	//TODO("lab3");
-	 grid_t *grid = ctx->next_grid;
+	 grid_t *grid = ctx->curr_grid;
 	 int originalWidth = grid->width;
 	 int originalHeight = grid->height;
 	 int procsWidth = grid->pw;
@@ -346,38 +346,26 @@ void exchng2d(ctx_t *ctx) {
 	 MPI_Request req[8];
 	 MPI_Status status[8];
 	
-	double* addrNorthSend = data + (procsWidth + 1) * padding;;
+	double* addrNorthSend = data + procsWidth * padding + padding;
 	double* addrNorthRecv = addrNorthSend - procsWidth;
-	//double* addrSouthSend = data + (originalHeight -1)*procsWidth;
-	double* addrSouthSend = data + procsHeight*procsWidth - (padding + 1)*procsWidth + padding;
-	double* addrSouthRecv = addrSouthSend + procsWidth;
+	double* addrSouthSend = addrNorthSend + originalHeight*procsWidth - procsWidth;
+	double* addrSouthRecv = addrSouthSend + padding * procsWidth;
 	double* addrEastSend = addrNorthSend +  originalWidth - 1;
-	double* addrEastRecv = addrEastSend + 1;
+	double* addrEastRecv = addrEastSend + padding;
 	double* addrWestSend = addrNorthSend;
-	double* addrWestRecv = addrWestSend - 1;
+	double* addrWestRecv = addrWestSend - padding;
 
+	MPI_Isend(addrNorthSend, originalWidth,MPI_DOUBLE, north, 1, comm, &req[0]);
+	MPI_Isend(addrSouthSend, originalWidth, MPI_DOUBLE, south, 0, comm, &req[1]);
+	MPI_Isend(addrEastSend, 1, ctx->vector, east, 3, comm, &req[2]);
+	MPI_Isend(addrWestSend, 1, ctx->vector, west, 2, comm, &req[3]);
 
-/*
-	double* addrNorthSend = data + (procsWidth + 1) * padding;
-	double* addrNorthRecv = addrNorthSend - procsWidth;
-	double* addrSouthSend = data + procsHeight*procsWidth -(padding + 1)*procsWidth + padding;
-	double* addrSouthRecv = addrSouthSend + procsWidth;
-	double* addrEastSend = addrNorthSend +  originalWidth -1;
-	double* addrEastRecv = addrEastSend + 1;
-	double* addrWestSend = addrNorthSend;
-	double* addrWestRecv = addrWestSend - 1;	
-*/	
 	
-	MPI_Irecv(addrNorthRecv, originalWidth, MPI_DOUBLE, north, 0, comm, &req[0]);
-	MPI_Irecv(addrSouthRecv, originalWidth, MPI_DOUBLE, south, 1, comm, &req[1]);
-	MPI_Irecv(addrEastRecv, 1, ctx->vector, east, 2, comm, &req[2]);
-	MPI_Irecv(addrWestRecv, 1, ctx->vector, west, 3, comm, &req[3]);
+	MPI_Irecv(addrNorthRecv, originalWidth, MPI_DOUBLE, north, 0, comm, &req[4]);
+	MPI_Irecv(addrSouthRecv, originalWidth, MPI_DOUBLE, south, 1, comm, &req[5]);
+	MPI_Irecv(addrEastRecv, 1, ctx->vector, east, 2, comm, &req[6]);
+	MPI_Irecv(addrWestRecv, 1, ctx->vector, west, 3, comm, &req[7]);
 	
-	MPI_Isend(addrNorthSend, originalWidth,MPI_DOUBLE, north, 1, comm, &req[4]);
-	MPI_Isend(addrSouthSend, originalWidth, MPI_DOUBLE, south, 0, comm, &req[5]);
-	MPI_Isend(addrEastSend, 1, ctx->vector, east, 3, comm, &req[6]);
-	MPI_Isend(addrWestSend, 1, ctx->vector, west, 2, comm, &req[7]);
-
 	MPI_Waitall(8, req, status);
 }
 
@@ -419,19 +407,15 @@ int gather_result(ctx_t *ctx, opts_t *opts) {
 		int mProcsCord[DIM_2D];
       		MPI_Cart_coords(ctx->comm2d, ctx->rank, DIM_2D, mProcsCord);
       		grille = cart2d_get_grid(ctx->cart, mProcsCord[0], mProcsCord[1]);
-		grid_copy(ctx->next_grid, grille);
-		
+		grid_copy(local_grid, grille);
 		/* now we can merge all data blocks, reuse global_grid */
-		//cart2d_grid_merge(ctx->cart, ctx->global_grid);
 		cart2d_grid_merge(ctx->cart, ctx->global_grid);
 	}
 	else
 	{
         	MPI_Request req;
         	MPI_Status status;
-
-        	grille = grid_padding(ctx->next_grid, 0);
-        	MPI_Isend(grille->dbl, grille->height*grille->width, MPI_DOUBLE, 0, 0, ctx->comm2d, &req);
+        	MPI_Isend(local_grid->dbl, local_grid->height*local_grid->width, MPI_DOUBLE, 0, 0, ctx->comm2d, &req);
         	MPI_Waitall(1, &req, &status);
 	}
 
