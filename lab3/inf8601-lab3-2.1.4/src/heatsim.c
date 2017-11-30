@@ -289,7 +289,6 @@ int init_ctx(ctx_t *ctx, opts_t *opts) {
 		MPI_Status status[4];
 
 		int w, h, p;
-		int rank = (ctx->rank-1)*4;
 		MPI_Irecv(&w, 1, MPI_INTEGER, 0, 0, ctx->comm2d, &req[0]);
 		MPI_Irecv(&h, 1, MPI_INTEGER, 0, 1, ctx->comm2d, &req[1]);
 		MPI_Irecv(&p, 1, MPI_INTEGER, 0, 2, ctx->comm2d, &req[2]);
@@ -335,7 +334,6 @@ void exchng2d(ctx_t *ctx) {
 	 int originalWidth = grid->width;
 	 int originalHeight = grid->height;
 	 int procsWidth = grid->pw;
-	 int procsHeight = grid->ph;
 	 int padding = grid->padding;
 	 double *data = grid->dbl;
 	 int north = ctx->north_peer;
@@ -391,8 +389,8 @@ int gather_result(ctx_t *ctx, opts_t *opts) {
       			MPI_Request *req = calloc(ctx->numprocs -1 , sizeof(MPI_Request));
 			MPI_Status *status = calloc(ctx->numprocs - 1, sizeof(MPI_Status));
 
-			int nProcs = 1;
-			for (nProcs; nProcs < ctx->numprocs; nProcs++){
+			int nProcs;
+			for (nProcs = 1; nProcs < ctx->numprocs; nProcs++){
 				int procsCord[2];
 				MPI_Cart_coords(ctx->comm2d, nProcs, DIM_2D, procsCord);
 				grille = cart2d_get_grid(ctx->cart, procsCord[0], procsCord[1]);
